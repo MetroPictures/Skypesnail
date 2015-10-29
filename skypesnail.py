@@ -7,13 +7,6 @@ from core.api import MPServerAPI
 from core.utils import get_config
 from core.video_pad import MPVideoPad
 
-BIG_POSITION, LITTLE_POSITION = get_config('video_placements')
-
-DEFAULT_POSITIONS = {
-	'dad_video' : BIG_POSITION,
-	'kid_video' : LITTLE_POSITION
-}
-
 class Skypesnail(MPServerAPI, MPVideoPad):
 	def __init__(self):
 		MPServerAPI.__init__(self)
@@ -27,8 +20,8 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 			}
 		})
 
-		self.dad_video = ""
-		self.kid_video = ""
+		self.dad_video = "SKYPESNAIL_1.mp4"
+		self.kid_video = "SKYPESNAIL_2.mp4"
 
 		MPVideoPad.__init__(self)
 		logging.basicConfig(filename=self.conf['d_files']['module']['log'], level=logging.DEBUG)
@@ -36,12 +29,7 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 	def start_skypesnail(self):
 		logging.debug("Starting the whole thing")
 
-		return self.play_video(self.dad_video, \
-			with_extras={'pos' : DEFAULT_POSITIONS['dad_video'], 'vol' : 0}, \
-			video_callback=self.video_listener_callback) and \
-		self.play_video(self.kid_video, \
-			with_extras={'pos' : DEFAULT_POSITIONS['kid_video']}, \
-			video_callback=self.video_listener_callback)		
+		return self.play_video(self.dad_video, video_callback=self.video_listener_callback)	
 
 	def video_listener_callback(self, info):
 		try:
@@ -58,33 +46,13 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 		return self.toggle_placement()
 
 	def toggle_placement(self):
-		background_video, forground_video = None
-
 		try:
-			for video in [self.dad_video, self.kid_video]:
-				video_mapping = self.get_video_mapping_by_filename(video)
-				current_placement = self.get_video_placement(video_mapping.index)
+			# get video in position 0
+			# pause it
+			# stop it
+			# start video in position 1 at pause time from video 0
 
-				if current_placement is None:
-					DEFAULT_POSITIONS['dad_video' if video == self.dad_video else 'kid_video']
-
-				if current_placement == BIG_POSITION:
-					forground_video = {
-						'video' : video,
-						'placement' : LITTLE_POSITION,
-					}
-
-				else:
-					background_video = {
-						'video' : video,
-						'placement' : BIG_POSITION
-					}
-
-			for video in [background_video, forground_video]:
-				if not self.move_video(video['video'], video['placement'], \
-					with_extras={'vol' : 0} if video['video'] == self.dad_video else None, \
-					video_callback=self.video_listener_callback):
-					return False
+			# update db
 
 			return True
 
@@ -93,15 +61,6 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 			print e, type(e)
 
 		return False
-
-	def get_video_placement(self, index):
-		try:
-			return self.get_video_info(index)['current_placement']
-		except Exception as e:
-			logging.error("COULD NOT GET ANY PLACEMENT FOR VIDEO %s" % video)
-			print e, type(e)
-		
-		return None
 
 	def stop(self):
 		if not super(Skypesnail, self).stop():
