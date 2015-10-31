@@ -1,10 +1,10 @@
-import tornado.web, os, json, re, logging
+import os, json, logging
 from sys import argv, exit
-from time import sleep
+from time import sleep, time
 
 from core.vars import BASE_DIR
 from core.api import MPServerAPI
-from core.utils import get_config
+from core.utils import get_config, millis_to_time_str
 from core.video_pad import MPVideoPad
 
 class Skypesnail(MPServerAPI, MPVideoPad):
@@ -29,9 +29,50 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 	def start_skypesnail(self):
 		logging.debug("Starting the whole thing")
 
+		global_timekeeper = {
+			'start_time' : 0,
+			'last_pause_time' : 0,
+			'position_at_last_pause' : 0,
+			'master_video_index' : -1
+		}
+
+		self.db.set('global_timekeeper', json.dumps(global_timekeeper))
+		self.db.set("current_video", self.dad_video)
+
 		return self.play_video(self.dad_video, video_callback=self.video_listener_callback)	
 
 	def video_listener_callback(self, info):
+		global_timekeeper = json.loads(self.db.get('global_timekeeper'))
+		
+		# set the first timekeeper!
+		if global_timekeeper['start_time'] == 0 and 'start_time' in info['info'].keys():
+			global_timekeeper['start_time'] = info['info']['start_time']
+			global_timekeeper['master_video_index'] = info['index']
+
+		# TODO: take account for positioning...
+		if 'with_extras' in info['info'].keys() and 'pos' in info['info']['with_extras'].keys():
+			print "VID HAS POSITION EXTRAS!"
+			global_timekeeper['position_debounce'] = info['info']['with_extras']['pos']
+			print global_timekeeper['position_debounce']
+			# x seconds FROM where i started!
+
+		# of if paused...
+		if 'position_at_last_pause' in info['info'].keys():
+			old_position = global_timekeeper['position_at_last_pause']
+			new_position = (old_position + abs(info['info']['last_pause_time'] - global_timekeeper['start_time']))
+
+			global_timekeeper['position_at_last_pause'] = new_position
+			global_timekeeper['last_pause_time'] = info['info']['last_pause_time']
+
+		# and finally stopped...
+		if 'stopped' in info['info'].keys():
+			# start video in next position at pause time from current video
+			self.play_video(video=self.db.get('current_video'), \
+				with_extras={'pos' : millis_to_time_str(global_timekeeper['position_at_last_pause'] * 1000)}, \
+				video_callback=self.video_listener_callback)
+
+		self.db.set('global_timekeeper', json.dumps(global_timekeeper))
+
 		try:
 			video_info = self.get_video_info(info['index'])
 			video_info.update(info['info'])
@@ -39,7 +80,6 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 			video_info = info['info']
 
 		self.db.set("video_%d" % info['index'], json.dumps(video_info))		
-		logging.info("VIDEO INFO UPDATED: %s" % self.db.get("video_%d" % info['index']))
 
 	def press(self, key):
 		logging.debug("press overridden.")
@@ -47,12 +87,20 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 
 	def toggle_placement(self):
 		try:
-			# get video in position 0
-			# pause it
-			# stop it
-			# start video in position 1 at pause time from video 0
+			global_timekeeper = json.loads(self.db.get('global_timekeeper'))
 
+			# get video in current position
+			current_video = self.db.get("current_video")
+			next_video = self.kid_video if current_video == self.dad_video else self.dad_video
+			
+			# pause it
+			self.pause_video(video=current_video, video_callback=self.video_listener_callback)
+
+			# stop it
+			self.stop_video(video=current_video, video_callback=self.video_listener_callback)
+			
 			# update db
+			self.db.set('current_video', next_video)
 
 			return True
 
@@ -69,8 +117,7 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 		return self.stop_video_pad()
 
 	def reset_for_call(self):
-		for video_mapping in self.video_mappings:
-			self.db.delete("video_%s" % video_mapping.index)
+		self.db.delete("global_timekeeper")
 
 		super(Skypesnail, self).reset_for_call()
 

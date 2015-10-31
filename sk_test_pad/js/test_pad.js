@@ -24,8 +24,8 @@ $(document).ready(function() {
 		.click(function() {
 			$.ajax({
 				url : "/mapping/3"
-			}).done(function(json)) {
+			}).done(function(json) {
 				console.info(json);
-			}
+			})
 		});
 });
