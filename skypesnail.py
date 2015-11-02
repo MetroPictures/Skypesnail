@@ -32,8 +32,6 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 	def start_skypesnail(self):
 		logging.debug("Starting the whole thing")
 
-		self.db.set("current_video", DAD_VID)
-
 		return self.play_video("SKYPESNAIL_MERGED.mp4", \
 			with_extras={'loop' : ""}, \
 			video_callback=self.video_listener_callback)	
@@ -55,26 +53,24 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 
 	def toggle_placement(self):
 		try:
-			# get video in current position
-			current_video = int(self.db.get("current_video"))
-			next_video = KID_VID if current_video == DAD_VID else DAD_VID
-
 			# get current position
 			current_position = self.get_video_position()
 			if current_position is None:
-				return False
+				self.signal_restart()
+
+			# get video in current position
+			current_video = DAD_VID if current_position <= VID_DIFFERENTIAL else KID_VID
 			
 			# set new position
 			new_position = (current_position + VID_DIFFERENTIAL) if current_video == DAD_VID \
 				else (current_position - VID_DIFFERENTIAL)
 
+			if new_position is None:
+				self.signal_restart()
+
 			logging.debug("Current Position: %d" % current_position)
 			logging.debug("New Position: %d" % new_position)
-			logging.debug("Seeking to video %d" % next_video)			
 			self.set_video_position(new_position, video_callback=self.video_listener_callback)
-
-			# update db
-			self.db.set('current_video', next_video)
 
 			return True
 
