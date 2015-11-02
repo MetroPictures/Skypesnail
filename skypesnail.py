@@ -11,7 +11,7 @@ from core.video_pad import MPVideoPad
 
 DAD_VID = 0
 KID_VID = 1
-VID_DIFFERENTIAL = 248920000
+VID_DIFFERENTIAL = 497831000/2
 
 class Skypesnail(MPServerAPI, MPVideoPad):
 	def __init__(self):
@@ -70,7 +70,7 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 
 			logging.debug("Current Position: %d" % current_position)
 			logging.debug("New Position: %d" % new_position)
-			logging.debug("Seeking to video %d (%s)" % (next_video, "DAD" if next_video == DAD_VID else "KID"))			
+			logging.debug("Seeking to video %d" % next_video)			
 			self.set_video_position(new_position, video_callback=self.video_listener_callback)
 
 			# update db
