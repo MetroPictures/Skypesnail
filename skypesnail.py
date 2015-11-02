@@ -68,6 +68,8 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 			new_position = (current_position + VID_DIFFERENTIAL) if current_video == DAD_VID \
 				else (current_position - VID_DIFFERENTIAL)
 
+			logging.debug("Current Position: %d" % current_position)
+			logging.debug("New Position: %d" % new_position)
 			logging.debug("Seeking to video %d (%s)" % (next_video, "DAD" if next_video == DAD_VID else "KID"))			
 			self.set_video_position(new_position, video_callback=self.video_listener_callback)
 
