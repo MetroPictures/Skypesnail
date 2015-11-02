@@ -39,14 +39,6 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 	def video_listener_callback(self, info):
 		print info
 
-		try:
-			video_info = self.get_video_info(info['index'])
-			video_info.update(info['info'])
-		except Exception as e:
-			video_info = info['info']
-
-		self.db.set("video_%d" % info['index'], json.dumps(video_info))		
-
 	def press(self, key):
 		logging.debug("press overridden.")
 		return self.toggle_placement()
