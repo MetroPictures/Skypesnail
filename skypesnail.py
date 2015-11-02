@@ -1,4 +1,4 @@
-import os, json, logging
+import os, json, logging, requests
 from sys import argv, exit
 from time import sleep, time
 
@@ -115,6 +115,22 @@ class Skypesnail(MPServerAPI, MPVideoPad):
 			return False
 
 		return self.stop_video_pad()
+
+	def start(self):
+		if not super(Skypesnail, self).start():
+			return False
+
+		# auto-start!
+		try:
+			r = requests.get("http://localhost:%d/pick_up" % self.conf['api_port'])
+			print r.content
+			return True
+		except Exception as e:
+			logging.error("Could not start?")
+			print e, type(e)
+
+		return False
+
 
 	def reset_for_call(self):
 		self.db.delete("global_timekeeper")
